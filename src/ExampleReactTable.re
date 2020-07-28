@@ -14,12 +14,14 @@ module Hooks = {
     key: string,
   };
 
-  [@bs.deriving accessors]
-  type testAccessor = {nama: string};
-
-  type headerGroupProps('column) = {
+  type headerGroupProps('headers) = {
     getHeaderGroupProps: unit => tableProps,
-    headers: array('column),
+    headers: array('headers),
+  };
+
+  type footerGroupProps('footers) = {
+    getFooterGroupProps: unit => tableProps,
+    headers: array('footers),
   };
 
   type cell = string;
@@ -30,6 +32,7 @@ module Hooks = {
     accessor: string,
     columns: array(column),
     getHeaderProps: unit => tableProps,
+    getFooterProps: unit => tableProps,
     render: (. string) => React.element,
   };
 
@@ -50,6 +53,7 @@ module Hooks = {
     getTableProps: unit => tableProps,
     getTableBodyProps: unit => tableProps,
     headerGroups: array(headerGroupProps('column)),
+    footerGroups: array(footerGroupProps('column)),
     rows: array(row('row)),
     /* ASK: Buat apa? */
     prepareRow: row('row) => unit,
@@ -61,19 +65,21 @@ module Hooks = {
 
 [@react.component]
 let make = (~data as _) => {
+  /* Example data */
   let table =
     Hooks.useTable({
       "columns": [|
         {
           "Header": "First Name",
-          "Footer": "First Name",
+          "Footer": "Footer First Name",
           "accessor": "firstName",
         },
         {
           "Header": "Last Name",
-          "Footer": "Last Name",
+          "Footer": "Footer Last Name",
           "accessor": "lastName",
         },
+        {"Header": "Age", "Footer": "Footer Age", "accessor": "age"},
       |],
       "data": [|
         {"firstName": "thomas", "lastName": "2"},
@@ -81,10 +87,10 @@ let make = (~data as _) => {
         {"firstName": "damien", "lastName": "32"},
       |],
     });
-  Js.log2("prepareRow", table.prepareRow);
-  Js.log(table.headerGroups);
-  Js.log(table.getTableProps());
-  Js.log(table.getTableBodyProps());
+
+  Js.log2("table", table);
+  Js.log2("headerGroups", table.headerGroups);
+  Js.log2("footergroups", table.footerGroups);
 
   <table
     role={table.getTableProps() |> Hooks.role}
@@ -92,6 +98,7 @@ let make = (~data as _) => {
     <thead>
       {table.headerGroups
        ->Belt.Array.map(group => {
+           Js.log2("headerGroups mapped", group);
            let tableProps = group.getHeaderGroupProps();
            <tr role={tableProps.role} key={tableProps.key}>
              {group.headers
@@ -106,18 +113,35 @@ let make = (~data as _) => {
          })
        ->React.array}
     </thead>
-    <tbody role={table.getTableBodyProps() |> Hooks.role}>
-      {table.rows
-       ->Belt.Array.map(row => {
-           Js.log2("row", row);
-           Js.log2("row.getRowProps", row.getRowProps);
-           Js.log2("row.original", row.original);
-
-           /* <tr />; */
-           React.null;
+    /* <tbody role={table.getTableBodyProps() |> Hooks.role}>
+         {table.rows
+          ->Belt.Array.map(row => {
+              /* Js.log2("row", row);
+                 Js.log2("row.getRowProps", row.getRowProps);
+                 Js.log2("row.original", row.original); */
+              /* <tr />; */
+              React.null
+            })
+          ->React.array}
+       </tbody> */
+    <tfoot>
+      {table.footerGroups
+       ->Belt.Array.map(group => {
+           Js.log2("footersGorup mapped", group);
+           let footerRowProps = group.getFooterGroupProps();
+           Js.log2("footers group footers", group.headers);
+           <tr key={footerRowProps.key} role={footerRowProps.role}>
+             {group.headers
+              ->Belt.Array.map(column => {
+                  let tdProps = column.getFooterProps();
+                  <td role={tdProps.role} key={tdProps.key}>
+                    {column.render(. "Footer")}
+                  </td>;
+                })
+              ->React.array}
+           </tr>;
          })
        ->React.array}
-    </tbody>
-    <tfoot />
+    </tfoot>
   </table>;
 };
