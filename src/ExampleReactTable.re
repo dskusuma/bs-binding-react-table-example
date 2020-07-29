@@ -1,8 +1,3 @@
-module ReactTable = {
-  [@bs.module "react-table"] [@react.component]
-  external make: (~data: 'data=?) => React.element = "default";
-};
-
 module Hooks = {
   /*
    * Decorator will generate a function that matching the name of
@@ -24,7 +19,10 @@ module Hooks = {
     headers: array('footers),
   };
 
-  type cell = string;
+  type cell = {
+    getCellProps: unit => tableProps,
+    render: (. string) => React.element,
+  };
 
   type column = {
     header: string,
@@ -45,7 +43,7 @@ module Hooks = {
 
   type row('r) = {
     original: 'r,
-    getRowProps: unit => string,
+    getRowProps: unit => tableProps,
     cells: array(cell),
   };
 
@@ -88,17 +86,12 @@ let make = (~data as _) => {
       |],
     });
 
-  Js.log2("table", table);
-  Js.log2("headerGroups", table.headerGroups);
-  Js.log2("footergroups", table.footerGroups);
-
   <table
     role={table.getTableProps() |> Hooks.role}
     key={table.getTableProps() |> Hooks.key}>
     <thead>
       {table.headerGroups
        ->Belt.Array.map(group => {
-           Js.log2("headerGroups mapped", group);
            let tableProps = group.getHeaderGroupProps();
            <tr role={tableProps.role} key={tableProps.key}>
              {group.headers
@@ -113,23 +106,30 @@ let make = (~data as _) => {
          })
        ->React.array}
     </thead>
-    /* <tbody role={table.getTableBodyProps() |> Hooks.role}>
-         {table.rows
-          ->Belt.Array.map(row => {
-              /* Js.log2("row", row);
-                 Js.log2("row.getRowProps", row.getRowProps);
-                 Js.log2("row.original", row.original); */
-              /* <tr />; */
-              React.null
-            })
-          ->React.array}
-       </tbody> */
+    <tbody role={table.getTableBodyProps() |> Hooks.role}>
+      {table.rows
+       ->Belt.Array.map(row => {
+           table.prepareRow(row);
+           let rowProps = row.getRowProps();
+           <tr role={rowProps.role} key={rowProps.key}>
+             {Belt.Array.map(
+                row.cells,
+                cell => {
+                  let cellProps = cell.getCellProps();
+                  <td key={cellProps.key} role={cellProps.role}>
+                    {cell.render(. "Cell")}
+                  </td>;
+                },
+              )
+              ->React.array}
+           </tr>;
+         })
+       ->React.array}
+    </tbody>
     <tfoot>
       {table.footerGroups
        ->Belt.Array.map(group => {
-           Js.log2("footersGorup mapped", group);
            let footerRowProps = group.getFooterGroupProps();
-           Js.log2("footers group footers", group.headers);
            <tr key={footerRowProps.key} role={footerRowProps.role}>
              {group.headers
               ->Belt.Array.map(column => {
